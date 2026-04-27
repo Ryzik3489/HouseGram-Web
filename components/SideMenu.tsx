@@ -70,7 +70,12 @@ export default function SideMenu() {
                 onClick={() => { setView('create-channel'); setSideMenuOpen(false); }}
                 accent
               />
-              <MenuItem icon={<UsersRound size={22} strokeWidth={2} />} text="Новая группа" locked />
+              <MenuItem 
+                icon={<UsersRound size={22} strokeWidth={2} />} 
+                text="Новая группа" 
+                onClick={() => { setView('create-group'); setSideMenuOpen(false); }}
+                accent
+              />
               
               {/* Contacts Section */}
               <div className="my-2 border-t border-gray-100 dark:border-gray-800" />

@@ -495,8 +495,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (!user || !activeChatId) return;
     
-    // Не слушаем статус для ботов и специальных чатов
-    if (activeChatId === 'saved_messages' || activeChatId === 'test_bot') return;
+    const activeContact = contacts[activeChatId];
+    if (activeChatId === 'saved_messages' || activeChatId === 'test_bot' || activeContact?.isGroup) return;
     
     const chatDocId = [user.uid, activeChatId].sort().join('_');
     const chatRef = doc(db, 'chats', chatDocId);
@@ -544,7 +544,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     });
     
     return () => unsubscribe();
-  }, [user, activeChatId]);
+  }, [user, activeChatId, contacts]);
 
   const logout = useCallback(async () => {
     if (auth.currentUser) {
@@ -561,6 +561,12 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     setContacts(initialContacts);
     setView('auth');
   }, []);
+
+  const getChatId = useCallback((contactId: string, contact?: Contact) => {
+    if (contact?.isGroup) return contactId;
+    if (!user) return contactId;
+    return [user.uid, contactId].sort().join('_');
+  }, [user]);
 
   const updatePasscode = useCallback((code: string | null) => {
     setPasscode(code);
@@ -595,12 +601,13 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const markAsRead = useCallback(async (contactId: string) => {
     if (!user) return;
+    const contact = contacts[contactId];
+    const chatId = getChatId(contactId, contact);
     
     // Обнуляем счетчик непрочитанных
     setContacts(prev => ({ ...prev, [contactId]: { ...prev[contactId], unread: 0 } }));
     
     // Обновляем статус всех непрочитанных сообщений на 'read'
-    const chatId = [user.uid, contactId].sort().join('_');
     try {
       const messagesRef = collection(db, 'chats', chatId, 'messages');
       
@@ -630,7 +637,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const clearHistory = useCallback(async (contactId: string) => {
     if (!user) return;
-    const chatId = [user.uid, contactId].sort().join('_');
+    const contact = contacts[contactId];
+    const chatId = getChatId(contactId, contact);
     try {
       const messagesRef = collection(db, 'chats', chatId, 'messages');
       const snapshot = await getDocs(query(messagesRef));
@@ -644,7 +652,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const deleteChat = useCallback(async (contactId: string) => {
     if (!user) return;
-    const chatId = [user.uid, contactId].sort().join('_');
+    const contact = contacts[contactId];
+    const chatId = getChatId(contactId, contact);
     try {
       const messagesRef = collection(db, 'chats', chatId, 'messages');
       const snapshot = await getDocs(query(messagesRef));
@@ -741,8 +750,12 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // Для обычных чатов
-    const chatId = [auth.currentUser.uid, currentChatId].sort().join('_');
+    // Для обычных чатов и групп
+    const isGroupChat = contact?.isGroup === true;
+    const chatId = isGroupChat ? currentChatId : [auth.currentUser.uid, currentChatId].sort().join('_');
+    const participants = isGroupChat
+      ? (contact?.participants || [auth.currentUser.uid, currentChatId])
+      : [auth.currentUser.uid, currentChatId].sort();
 
     const newMessage: Omit<Message, 'id'> = {
       type: 'sent', text, time: timeString, status: 'sent', senderId: auth.currentUser.uid,
@@ -753,9 +766,10 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       // Создаем/обновляем чат с полной информацией за один раз
       await setDoc(doc(db, 'chats', chatId), { 
         updatedAt: serverNow, 
-        participants: [auth.currentUser.uid, currentChatId].sort(),
+        participants,
         lastMessage: text || 'Медиа',
-        lastMessageSenderId: auth.currentUser.uid
+        lastMessageSenderId: auth.currentUser.uid,
+        isGroup: isGroupChat,
       }, { merge: true });
       
       // Добавляем сообщение
@@ -828,7 +842,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const editMessage = useCallback(async (messageId: string, newText: string) => {
     if (!user || !activeChatId) return;
-    const chatId = [user.uid, activeChatId].sort().join('_');
+    const activeContact = contacts[activeChatId];
+    const chatId = getChatId(activeChatId, activeContact);
     try {
       await updateDoc(doc(db, 'chats', chatId, 'messages', messageId), {
         text: newText,
@@ -843,7 +858,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const deleteMessage = useCallback(async (messageId: string) => {
     if (!user || !activeChatId) return;
-    const chatId = [user.uid, activeChatId].sort().join('_');
+    const activeContact = contacts[activeChatId];
+    const chatId = getChatId(activeChatId, activeContact);
     try {
       await deleteDoc(doc(db, 'chats', chatId, 'messages', messageId));
       setContacts(prev => {
@@ -864,9 +880,11 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const forwardMessage = useCallback(async (message: Message, targetChatId: string) => {
     if (!user) return;
-    const targetChatId2 = [user.uid, targetChatId].sort().join('_');
+    const targetContact = contacts[targetChatId];
+    const targetChatId2 = getChatId(targetChatId, targetContact);
     const sourceContact = contacts[activeChatId || ''];
     const timeString = `${new Date().getHours().toString().padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`;
+    const participants = targetContact?.isGroup ? (targetContact.participants || [user.uid, targetChatId]) : [user.uid, targetChatId].sort();
     const newMessage: Omit<Message, 'id'> = {
       type: 'sent',
       text: message.text,
@@ -887,9 +905,10 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       // Создаем/обновляем чат с полной информацией за один раз
       await setDoc(doc(db, 'chats', targetChatId2), { 
         updatedAt: serverTimestamp(), 
-        participants: [user.uid, targetChatId].sort(),
+        participants,
         lastMessage: message.text,
-        lastMessageSenderId: user.uid
+        lastMessageSenderId: user.uid,
+        isGroup: targetContact?.isGroup === true,
       }, { merge: true });
       
       // Добавляем сообщение
@@ -929,6 +948,39 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       const newContacts: Record<string, Contact> = {};
       for (const docSnapshot of snapshot.docs) {
         const data = docSnapshot.data();
+        const isGroupChat = data.isGroup === true || (Array.isArray(data.participants) && data.participants.length > 2);
+        if (isGroupChat) {
+          const groupId = docSnapshot.id;
+          const participants = Array.isArray(data.participants) ? data.participants : [];
+          const membersCount = Math.max(participants.length, 1);
+          const timeString = (() => {
+            if (!data.updatedAt) return '';
+            try { const date = data.updatedAt.toDate(); return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`; } catch (e) { return ''; }
+          })();
+          const dummyMessages: Message[] = [];
+          if (data.lastMessage) {
+            dummyMessages.push({ id: 'dummy', type: data.lastMessageSenderId === user.uid ? 'sent' : 'received', text: data.lastMessage, time: timeString });
+          }
+          newContacts[groupId] = {
+            id: groupId,
+            name: data.name || 'Группа',
+            initial: (data.name || 'Г').charAt(0).toUpperCase(),
+            avatarColor: getAvatarColor(groupId),
+            avatarUrl: data.avatarUrl || '',
+            statusOnline: `${membersCount} участников`,
+            statusOffline: `${membersCount} участников`,
+            phone: '',
+            bio: data.description || '',
+            username: '',
+            messages: dummyMessages,
+            isTyping: false,
+            unread: 0,
+            isGroup: true,
+            participants,
+          };
+          continue;
+        }
+
         const otherUserId = data.participants.find((id: string) => id !== user.uid);
         if (!otherUserId) continue;
         try {
@@ -1136,8 +1188,9 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       return () => unsubscribe();
     }
     
-    // Для обычных чатов
-    const chatId = [user.uid, activeChatId].sort().join('_');
+    // Для обычных чатов и групп
+    const activeContact = contacts[activeChatId];
+    const chatId = getChatId(activeChatId, activeContact);
     const messagesRef = collection(db, 'chats', chatId, 'messages');
     const q = query(messagesRef, orderBy('createdAt', 'asc'));
 

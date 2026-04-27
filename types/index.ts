@@ -76,6 +76,8 @@ export interface Contact {
   isBlocked?: boolean;
   isBot?: boolean;
   isChannel?: boolean;
+  isGroup?: boolean;
+  participants?: string[];
   isOfficial?: boolean;
   isFounder?: boolean;
   premium?: boolean;
@@ -111,4 +113,4 @@ export interface UserProfile {
   premiumExpiry?: FirestoreTimestamp | null;
 }
 
-export type ViewState = 'menu' | 'chat' | 'profile' | 'settings' | 'chat-settings' | 'features' | 'privacy' | 'privacy-settings' | 'notifications' | 'security' | 'admin' | 'auth' | 'info' | 'faq' | 'terms' | 'create-channel' | 'channel-info' | 'notification-stats' | 'server-status' | 'stars' | 'premium' | 'send-gift' | 'my-gifts' | 'user-gifts' | 'buy-stars' | 'wallet' | 'mini-games' | 'my-stories' | 'news' | 'proxy';
+export type ViewState = 'menu' | 'chat' | 'profile' | 'settings' | 'chat-settings' | 'features' | 'privacy' | 'privacy-settings' | 'notifications' | 'security' | 'admin' | 'info' | 'faq' | 'terms' | 'create-channel' | 'create-group' | 'channel-info' | 'notification-stats' | 'server-status' | 'stars' | 'premium' | 'send-gift' | 'my-gifts' | 'user-gifts' | 'buy-stars' | 'wallet' | 'mini-games' | 'my-stories' | 'news' | 'proxy';

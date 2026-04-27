@@ -68,6 +68,9 @@ const TermsView = dynamic(() => import('@/components/TermsView'), {
 const CreateChannelView = dynamic(() => import('@/components/CreateChannelView'), {
   loading: () => <LoadingSpinner />
 });
+const CreateGroupView = dynamic(() => import('@/components/CreateGroupView'), {
+  loading: () => <LoadingSpinner />
+});
 const ChannelInfoView = dynamic(() => import('@/components/ChannelInfoView'), {
   loading: () => <LoadingSpinner />
 });
@@ -137,6 +140,7 @@ const viewComponents: Record<string, React.ComponentType> = {
   faq: FaqView,
   terms: TermsView,
   'create-channel': CreateChannelView,
+  'create-group': CreateGroupView,
   'channel-info': ChannelInfoView,
   'notification-stats': NotificationStatsView,
   'server-status': ServerStatusView,

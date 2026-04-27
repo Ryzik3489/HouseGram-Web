@@ -1,7 +1,7 @@
 'use client';
 
 import { useChat } from '@/context/ChatContext';
-import { Menu, Search, Edit2, Bookmark, ArrowLeft, CheckCircle, BadgeCheck, Star, Monitor, Smartphone } from 'lucide-react';
+import { Menu, Search, Bookmark, ArrowLeft, CheckCircle, BadgeCheck, Star, Monitor, Smartphone, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
@@ -138,7 +138,7 @@ export default function ChatList() {
   };
 
   const sortedContacts = Object.values(contacts)
-    .filter(c => c.id === 'saved_messages' || c.isChannel || c.messages.length > 0)
+    .filter(c => c.id === 'saved_messages' || c.isChannel || c.isGroup || c.messages.length > 0)
     .filter(c => {
       if (!searchQuery.trim()) return true;
       const query = searchQuery.toLowerCase();
@@ -396,6 +396,7 @@ export default function ChatList() {
       </div>
 
       <motion.button
+        onClick={() => setView('create-group')}
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0 }}
         whileHover={{ scale: 1.1 }}
@@ -404,7 +405,7 @@ export default function ChatList() {
         className="absolute bottom-6 right-6 w-16 h-16 rounded-full flex items-center justify-center shadow-2xl hover:shadow-3xl transition-all text-white z-10"
         style={{ backgroundColor: themeColor }}
       >
-        <Edit2 size={24} />
+        <Users size={24} />
       </motion.button>
 
       {/* Premium Modal */}
