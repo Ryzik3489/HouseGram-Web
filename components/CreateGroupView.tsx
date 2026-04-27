@@ -63,8 +63,15 @@ export default function CreateGroupView() {
         const snapshot = await getDocs(usersQuery);
         if (!isMounted) return;
 
-        const results = snapshot.docs
-          .map((item) => ({ id: item.id, ...(item.data() as Omit<GroupUser, 'id'>) }))
+        const results: GroupUser[] = snapshot.docs
+          .map((item) => {
+            const data = item.data() as Partial<GroupUser>;
+            return {
+              id: item.id,
+              name: data.name,
+              username: data.username,
+            };
+          })
           .filter((user) => user.id !== auth.currentUser?.uid)
           .filter((user) => !selectedUsers.some((selected) => selected.id === user.id))
           .filter((user) => {
@@ -84,7 +91,7 @@ export default function CreateGroupView() {
     return () => { isMounted = false; };
   }, [debouncedQuery, selectedUsers]);
 
-  const handleSelectUser = (user: any) => {
+  const handleSelectUser = (user: GroupUser) => {
     if (selectedUsers.some((item) => item.id === user.id)) return;
     setSelectedUsers((prev) => [...prev, user]);
     setSearchQuery('');
