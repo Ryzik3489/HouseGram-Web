@@ -7,6 +7,12 @@ import { auth, db } from '@/lib/firebase';
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import Image from 'next/image';
 
+type GroupUser = {
+  id: string;
+  name?: string;
+  username?: string;
+};
+
 const getAvatarColor = (id: string) => {
   const colors = [
     '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
@@ -27,8 +33,8 @@ export default function CreateGroupView() {
   const [avatarUrl, setAvatarUrl] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<GroupUser[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<GroupUser[]>([]);
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
@@ -58,7 +64,7 @@ export default function CreateGroupView() {
         if (!isMounted) return;
 
         const results = snapshot.docs
-          .map((item) => ({ id: item.id, ...item.data() }))
+          .map((item) => ({ id: item.id, ...(item.data() as Omit<GroupUser, 'id'>) }))
           .filter((user) => user.id !== auth.currentUser?.uid)
           .filter((user) => !selectedUsers.some((selected) => selected.id === user.id))
           .filter((user) => {
