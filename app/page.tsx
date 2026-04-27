@@ -218,7 +218,7 @@ function AppContent() {
     </div>
   );
 
-  if (view === 'auth' || !user) {
+  if (!user) {
     if (isDesktop) {
       return (
         <DesktopLayout>
